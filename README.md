@@ -4,6 +4,8 @@ Offline localization QA for game text exports. Compare a source locale with a ta
 
 **Python 3.10+ · no runtime dependencies · local files only · MIT**
 
+[![CI](https://github.com/GhosTnever-lkm/game-text-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/GhosTnever-lkm/game-text-gate/actions/workflows/ci.yml) · [![Version](https://img.shields.io/github/v/release/GhosTnever-lkm/game-text-gate?sort=semver)](https://github.com/GhosTnever-lkm/game-text-gate/releases) · ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
 ## Supported inputs
 
 | Input | Supported shape | Notes |

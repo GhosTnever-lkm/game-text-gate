@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6 — 2026-10-10
+
+- Add CI, version and license badges to the README.
+
 ## 0.1.5 — 2026-10-10
 
 - Link the paid Locale Matrix Pro add-on from the project documentation.
