@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8 — 2026-10-11
+
+- Add GitHub Funding metadata with verified Buy Me a Coffee and Gumroad links.
+- Update the README Action example and package version.
+
 ## 0.1.7 — 2026-10-11
 
 - Update the GitHub Action example to the current tag.
