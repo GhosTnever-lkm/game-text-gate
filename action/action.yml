@@ -44,9 +44,17 @@ inputs:
     description: Displayed tool version
     required: false
     default: '0.1.0'
+  python-version:
+    description: Python runtime version
+    required: false
+    default: '3.12'
 runs:
   using: composite
   steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
     - name: Run GameText Gate
       shell: bash
       env:

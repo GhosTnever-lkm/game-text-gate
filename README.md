@@ -61,6 +61,7 @@ jobs:
           report: markdown
           report-path: localization-report.md
           fail-on: error
+          python-version: '3.12'
 ```
 
 For SARIF upload, set job `security-events: write`, ask the action for `report: sarif`, then use GitHub's `upload-sarif` action with the generated file. The action itself does not request write permissions or upload artifacts.
