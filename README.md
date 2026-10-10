@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: GhosTnever-lkm/game-text-gate@v0.1.3
+      - uses: GhosTnever-lkm/game-text-gate@v0.1.5
         with:
           source: Localization/en.csv
           target: Localization/ru.csv
@@ -81,7 +81,7 @@ All analysis runs locally in the CLI or in the GitHub Actions runner. The tool d
 
 ## Support / Pro Version
 
-The free CLI and GitHub Action are MIT-licensed. Optional Pro add-ons provide extra reporting workflows while reusing the free core. The [Locale Matrix Pro add-on](https://boosty.to/azizazimov/posts/PRO_POST_ID) compares several target locales in one run and creates a filterable local HTML report.
+The free CLI and GitHub Action are MIT-licensed. Optional Pro add-ons provide extra reporting workflows while reusing the free core. The [Locale Matrix Pro add-on](https://boosty.to/azizazimov/posts/3c8895d7-8a95-4622-9eb3-626a78d272b2) compares several target locales in one run and creates a filterable local HTML report.
 
 Support: [Boosty](https://boosty.to/azizazimov). No paid purchase is needed to use the free tool.
 

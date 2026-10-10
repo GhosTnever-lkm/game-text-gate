@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5 — 2026-10-10
+
+- Link the paid Locale Matrix Pro add-on from the project documentation.
+- Update the consuming GitHub Action example to the current release.
+
 ## 0.1.4 — 2026-10-10
 
 - Add clearer support links and a documented architecture overview.
