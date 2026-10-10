@@ -66,6 +66,25 @@ jobs:
 
 For SARIF upload, set job `security-events: write`, ask the action for `report: sarif`, then use GitHub's `upload-sarif` action with the generated file. The action itself does not request write permissions or upload artifacts.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  A[CSV / PO / JSON] --> B[Format readers]
+  B --> C[Normalized key-value entries]
+  C --> D[Static QA rules]
+  D --> E[Text / Markdown / JSON / SARIF]
+  D --> F[GitHub Action annotations]
+```
+
+All analysis runs locally in the CLI or in the GitHub Actions runner. The tool does not upload localization files or perform translations.
+
+## Support / Pro Version
+
+The free CLI and GitHub Action are MIT-licensed. Optional Pro add-ons provide extra reporting workflows while reusing the free core. The [Locale Matrix Pro add-on](https://boosty.to/azizazimov/posts/PRO_POST_ID) compares several target locales in one run and creates a filterable local HTML report.
+
+Support: [Boosty](https://boosty.to/azizazimov). No paid purchase is needed to use the free tool.
+
 ## Local development
 
 ```powershell

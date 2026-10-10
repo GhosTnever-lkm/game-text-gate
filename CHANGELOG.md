@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4 — 2026-10-10
+
+- Add clearer support links and a documented architecture overview.
+- Clarify free-core and paid locale-matrix add-on options.
+
 ## 0.1.3 — 2026-10-10
 
 - Keep gettext context and message id together when comparing keys.
