@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.7 — 2026-10-11
+
+- Update the GitHub Action example to the current tag.
+- Align the CLI/package version with the release version.
+
 ## 0.1.6 — 2026-10-10
 
 - Add CI, version and license badges to the README.

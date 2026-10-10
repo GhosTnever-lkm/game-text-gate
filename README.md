@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: GhosTnever-lkm/game-text-gate@v0.1.5
+      - uses: GhosTnever-lkm/game-text-gate@v0.1.7
         with:
           source: Localization/en.csv
           target: Localization/ru.csv
