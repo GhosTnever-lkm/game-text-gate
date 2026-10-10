@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from game_text_gate.core import InputError, compare, extract_tokens, load_entries
+from game_text_gate.core import Finding, InputError, compare, extract_tokens, load_entries
 from game_text_gate.report import make_report, to_sarif
 
 
@@ -54,6 +54,12 @@ class CoreTests(unittest.TestCase):
         self.assertEqual({e.key: e.text for e in entries}, {"items": "un\nplusieurs", "long": "ligne continuee"})
         self.assertEqual(findings, [])
 
+    def test_po_context_is_part_of_key_identity(self):
+        path = self.write("contexts.po", 'msgctxt "button"\nmsgid "Open"\nmsgstr "Открыть"\n\nmsgctxt "door"\nmsgid "Open"\nmsgstr "Открыт"\n')
+        entries, findings = load_entries(path, "po", "ru")
+        self.assertEqual([e.key for e in entries], ["button" + chr(4) + "Open", "door" + chr(4) + "Open"])
+        self.assertEqual(findings, [])
+
     def test_placeholder_and_markup_mismatches(self):
         source = self.write("en.json", '{"greet":"Hello {player}, <b>%s</b>"}')
         target = self.write("fr.json", '{"greet":"Bonjour <b>{player}</b>"}')
@@ -69,9 +75,10 @@ class CoreTests(unittest.TestCase):
         self.assertNotIn(("brace", "count"), tokens)
 
     def test_sarif_serializes_valid_json(self):
-        report = make_report([], "en.csv", "fr.csv", "0.1.0")
+        report = make_report([Finding("missing_key", "error", "Missing key", str(self.root / "fr.csv"), 3, "TITLE")], "en.csv", "fr.csv", "0.1.0")
         sarif = json.loads(to_sarif(report))
         self.assertEqual(sarif["version"], "2.1.0")
+        self.assertTrue(sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"].startswith("file:///"))
 
 
 if __name__ == "__main__":

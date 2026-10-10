@@ -154,6 +154,7 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
     current: dict[str, Any] = {}
     active: str | None = None
     start_line: int | None = None
+    seen_keys: set[str] = set()
 
     def finish() -> None:
         nonlocal current, active, start_line
@@ -163,13 +164,15 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
         if msgid == "" and current.get("msgctxt") is None:
             current, active, start_line = {}, None, None  # PO header, not a translation row.
             return
-        key = current.get("msgctxt") or msgid
+        context = current.get("msgctxt")
+        key = f"{context}\x04{msgid}" if context is not None else msgid
         translations = list(current.get("msgstr_plural", {}).values()) if current.get("msgstr_plural") else [current.get("msgstr", "")]
         value = "\n".join(item for item in translations if item != "")
-        if key in {entry.key for entry in entries}:
+        if key in seen_keys:
             findings.append(Finding("duplicate_key", "error", f"Duplicate PO key {key!r}", str(path), start_line, key))
         else:
             entries.append(Entry(key, value, start_line))
+            seen_keys.add(key)
         current, active, start_line = {}, None, None
 
     directive = re.compile(r"^(msgctxt|msgid_plural|msgid|msgstr(?:\[\d+\])?)\s+(.*)$")

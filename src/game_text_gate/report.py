@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .core import Finding, finding_dict
@@ -39,10 +40,16 @@ def to_markdown(report: dict[str, Any]) -> str:
 def to_sarif(report: dict[str, Any]) -> str:
     rules: dict[str, dict[str, str]] = {}
     results = []
+    working_directory = Path.cwd().resolve()
     for finding in report["findings"]:
         rule_id = finding["rule_id"]
         rules.setdefault(rule_id, {"id": rule_id, "name": rule_id.replace("_", " ").title()})
-        location: dict[str, Any] = {"artifactLocation": {"uri": finding["file"]}}
+        path = Path(finding["file"])
+        try:
+            uri = path.resolve().relative_to(working_directory).as_posix()
+        except (OSError, ValueError):
+            uri = path.resolve().as_uri()
+        location: dict[str, Any] = {"artifactLocation": {"uri": uri}}
         if finding.get("line"):
             location["region"] = {"startLine": finding["line"]}
         result: dict[str, Any] = {

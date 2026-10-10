@@ -10,7 +10,7 @@ Offline localization QA for game text exports. Compare a source locale with a ta
 |---|---|---|
 | Unity Localization CSV | Exported table with a `Key` column and locale columns such as `Text (en)` / `Text (fr)` | Select locale with `--source-locale` / `--target-locale`; custom layouts can pass column options. |
 | Godot CSV | `keys` plus a selected locale/value column | Pass `--source-column` and `--target-column` for `keys,values` exports. |
-| Gettext PO | `msgid`, `msgctxt`, `msgstr`, multiline quoted strings, plural `msgstr[n]` | Plural forms are joined for token checks. Context is used as the key when present. |
+| Gettext PO | `msgid`, `msgctxt`, `msgstr`, multiline quoted strings, plural `msgstr[n]` | Plural forms are joined for token checks. Context is combined with `msgid` for key identity. |
 | Nested JSON | String leaves in objects/arrays | Flattened to escaped JSON Pointer keys. Duplicate object keys are rejected. |
 
 Placeholder checks cover simple `{name}` / `{0}`, printf-style tokens, a conservative Unity-style rich-text tag allowlist, and a conservative BBCode tag allowlist. ICU plural/select and typed ICU expressions are explicitly reported as unsupported notes; this tool does not claim full ICU, HTML, BBCode, or engine-runtime validation. Findings are static checks and require human review.
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: GhosTnever-lkm/game-text-gate@v0.1.2
+      - uses: GhosTnever-lkm/game-text-gate@v0.1.3
         with:
           source: Localization/en.csv
           target: Localization/ru.csv
