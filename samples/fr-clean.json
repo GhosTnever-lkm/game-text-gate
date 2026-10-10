@@ -1,0 +1,9 @@
+{
+  "menu": {
+    "start": "Démarrer {player}",
+    "quit": "Quitter"
+  },
+  "items": {
+    "count": "Vous avez %d objets"
+  }
+}

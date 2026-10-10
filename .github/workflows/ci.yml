@@ -25,4 +25,15 @@ jobs:
           code=$?
           test "$code" -eq 1
           python -c "import json; r=json.load(open('report.json', encoding='utf-8')); assert r['summary']['error'] == 2 and r['summary']['warning'] == 2"
+      - name: Exercise composite action from this checkout
+        uses: ./
+        with:
+          source: samples/en.json
+          target: samples/fr-clean.json
+          source-locale: en
+          target-locale: fr
+          report: json
+          report-path: action-report.json
+      - name: Verify composite action report
+        run: python -c "import json; r=json.load(open('action-report.json', encoding='utf-8')); assert not r['findings']"
 

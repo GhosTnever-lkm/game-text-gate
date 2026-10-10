@@ -40,10 +40,6 @@ inputs:
     description: error or warning
     required: false
     default: error
-  tool-version:
-    description: Displayed tool version
-    required: false
-    default: '0.1.0'
   python-version:
     description: Python runtime version
     required: false
@@ -69,7 +65,6 @@ runs:
         GTT_REPORT: ${{ inputs.report }}
         GTT_REPORT_PATH: ${{ inputs.report-path }}
         GTT_FAIL_ON: ${{ inputs.fail-on }}
-        GTT_VERSION: ${{ inputs.tool-version }}
       run: |
         python - <<'PY'
         import os
@@ -108,7 +103,8 @@ runs:
                 level = "error" if finding.level == "error" else "warning"
                 message = finding.message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
                 title = finding.rule_id.replace("%", "%25").replace(",", "%2C").replace(":", "%3A")
-                props = f"file={finding.file.replace(',', '%2C')},title={title}"
+                filename = finding.file.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A").replace(",", "%2C").replace(":", "%3A").replace("=", "%3D")
+                props = f"file={filename},title={title}"
                 if finding.line:
                     props += f",line={finding.line}"
                 print(f"::{level} {props}::{message}")
