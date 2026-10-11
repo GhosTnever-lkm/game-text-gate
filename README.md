@@ -6,6 +6,10 @@ Offline localization QA for game text exports. Compare a source locale with a ta
 
 [![CI](https://github.com/GhosTnever-lkm/game-text-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/GhosTnever-lkm/game-text-gate/actions/workflows/ci.yml) · [![Version](https://img.shields.io/github/v/release/GhosTnever-lkm/game-text-gate?sort=semver)](https://github.com/GhosTnever-lkm/game-text-gate/releases) · ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 
+![GameText Gate sample localization report showing placeholder, key, and empty-translation findings](docs/report-preview.png)
+
+*Preview generated from the repository sample files; GameText Gate reads inputs locally and reports findings without rewriting translations.*
+
 ## Supported inputs
 
 | Input | Supported shape | Notes |

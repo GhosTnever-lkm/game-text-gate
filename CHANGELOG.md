@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10 — 2026-10-11
+
+- Add a tested sample-report preview to the project README.
+
 ## 0.1.9 — 2026-10-11
 
 - Keep absolute local parent directories out of JSON, Markdown, SARIF, and input-error output; use workspace-relative paths or basenames.
