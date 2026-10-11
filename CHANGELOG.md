@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.14 - 2026-10-11
+
+- Complete the standard MIT license text, restoring the full warranty and liability disclaimer.
+
 ## 0.1.13 — 2026-10-11
 
 - Render Unicode LINE SEPARATOR and PARAGRAPH SEPARATOR as visible escapes in human-readable reports and CLI input errors.
