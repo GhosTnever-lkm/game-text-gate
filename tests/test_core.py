@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from game_text_gate.core import Finding, InputError, compare, extract_tokens, load_entries
-from game_text_gate.report import make_report, to_sarif
+from game_text_gate.report import make_report, to_markdown, to_sarif
 
 
 class CoreTests(unittest.TestCase):
@@ -78,7 +78,21 @@ class CoreTests(unittest.TestCase):
         report = make_report([Finding("missing_key", "error", "Missing key", str(self.root / "fr.csv"), 3, "TITLE")], "en.csv", "fr.csv", "0.1.0")
         sarif = json.loads(to_sarif(report))
         self.assertEqual(sarif["version"], "2.1.0")
-        self.assertTrue(sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"].startswith("file:///"))
+        self.assertEqual(sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"], "fr.csv")
+
+    def test_markdown_escapes_untrusted_paths_and_keys(self):
+        report = make_report(
+            [Finding("duplicate_key", "error", "Untrusted | message `", "locales/evil|`file\nnext.csv", key="key|`next\nrow")],
+            "locales/en|`source.csv",
+            "locales/fr.csv",
+            "0.1.9",
+        )
+        rendered = to_markdown(report)
+        self.assertIn("locales/en&#124;&#96;source.csv", rendered)
+        self.assertIn("evil&#124;&#96;file next.csv", rendered)
+        self.assertIn("key&#124;&#96;next row", rendered)
+        self.assertNotIn("evil|`file\nnext.csv", rendered)
+        self.assertNotIn("key|`next\nrow", rendered)
 
 
 if __name__ == "__main__":

@@ -6,12 +6,24 @@ import json
 import re
 from collections import Counter
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
 class InputError(Exception):
     """An input file or option is invalid."""
+
+
+def display_path(path: str | Path) -> str:
+    """Return a useful workspace-relative label without leaking machine directories."""
+    raw = str(path).replace("\\", "/")
+    if raw.startswith("/") or re.match(r"^[A-Za-z]:/", raw):
+        return PurePosixPath(raw).name or "."
+    candidate = Path(raw)
+    try:
+        return candidate.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (OSError, ValueError):
+        return candidate.name or "."
 
 
 @dataclass(frozen=True)
@@ -48,13 +60,13 @@ def _read_text(path: Path, max_bytes: int) -> str:
     try:
         data = path.read_bytes()
     except OSError as exc:
-        raise InputError(f"Cannot read {path}: {exc}") from exc
+        raise InputError(f"Cannot read {display_path(path)}: {exc.strerror or exc.__class__.__name__}") from exc
     if len(data) > max_bytes:
-        raise InputError(f"{path}: file size {len(data)} exceeds limit {max_bytes} bytes")
+        raise InputError(f"{display_path(path)}: file size {len(data)} exceeds limit {max_bytes} bytes")
     try:
         return data.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
-        raise InputError(f"{path}: input must be UTF-8 (decode error at byte {exc.start})") from exc
+        raise InputError(f"{display_path(path)}: input must be UTF-8 (decode error at byte {exc.start})") from exc
 
 
 def _csv_entries(path: Path, locale: str, key_column: str | None, text_column: str | None, max_bytes: int, max_entries: int) -> tuple[list[Entry], list[Finding]]:
@@ -63,12 +75,12 @@ def _csv_entries(path: Path, locale: str, key_column: str | None, text_column: s
         reader = csv.DictReader(text.splitlines(keepends=True), strict=True)
         headers = reader.fieldnames
         if not headers:
-            raise InputError(f"{path}: CSV is empty or has no header")
+            raise InputError(f"{display_path(path)}: CSV is empty or has no header")
         if len(set(headers)) != len(headers):
-            raise InputError(f"{path}: duplicate CSV column names")
+            raise InputError(f"{display_path(path)}: duplicate CSV column names")
         key_name = key_column or next((h for h in headers if h.casefold() in {"key", "keys", "id", "msgctxt"}), headers[0])
         if key_name not in headers:
-            raise InputError(f"{path}: key column {key_name!r} not found; columns: {headers}")
+            raise InputError(f"{display_path(path)}: key column {key_name!r} not found; columns: {headers}")
         value_name = text_column
         if value_name is None:
             for header in headers:
@@ -81,31 +93,31 @@ def _csv_entries(path: Path, locale: str, key_column: str | None, text_column: s
             if len(candidates) == 1:
                 value_name = candidates[0]
         if not value_name or value_name not in headers:
-            raise InputError(f"{path}: set --text-column or provide one locale column; columns: {headers}")
+            raise InputError(f"{display_path(path)}: set --text-column or provide one locale column; columns: {headers}")
         entries: list[Entry] = []
         findings: list[Finding] = []
         seen: dict[str, int | None] = {}
         for row in reader:
             line = reader.line_num
             if len(entries) + len(findings) >= max_entries:
-                raise InputError(f"{path}: row count exceeds limit {max_entries}")
+                raise InputError(f"{display_path(path)}: row count exceeds limit {max_entries}")
             if None in row:
-                findings.append(Finding("malformed_row", "error", "CSV row has more values than the header", str(path), line))
+                findings.append(Finding("malformed_row", "error", "CSV row has more values than the header", display_path(path), line))
             if any(value is None for value in row.values()):
-                findings.append(Finding("malformed_row", "error", "CSV row has fewer values than the header", str(path), line))
+                findings.append(Finding("malformed_row", "error", "CSV row has fewer values than the header", display_path(path), line))
             key = (row.get(key_name) or "").strip()
             value = row.get(value_name)
             if not key:
-                findings.append(Finding("empty_key", "error", f"Empty key in column {key_name}", str(path), line))
+                findings.append(Finding("empty_key", "error", f"Empty key in column {key_name}", display_path(path), line))
                 continue
             if key in seen:
-                findings.append(Finding("duplicate_key", "error", f"Duplicate key {key!r}; first seen at line {seen[key]}", str(path), line, key))
+                findings.append(Finding("duplicate_key", "error", f"Duplicate key {key!r}; first seen at line {seen[key]}", display_path(path), line, key))
                 continue
             seen[key] = line
             entries.append(Entry(key, value or "", line))
         return entries, findings
     except csv.Error as exc:
-        raise InputError(f"{path}: malformed CSV: {exc}") from exc
+        raise InputError(f"{display_path(path)}: malformed CSV: {exc}") from exc
 
 
 def _json_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entry], list[Finding]]:
@@ -115,21 +127,21 @@ def _json_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[En
             result = {}
             for key, value in pairs:
                 if key in result:
-                    raise InputError(f"{path}: duplicate JSON object key {key!r}")
+                    raise InputError(f"{display_path(path)}: duplicate JSON object key {key!r}")
                 result[key] = value
             return result
         root = json.loads(text, object_pairs_hook=object_pairs)
     except json.JSONDecodeError as exc:
-        raise InputError(f"{path}:{exc.lineno}:{exc.colno}: invalid JSON: {exc.msg}") from exc
+        raise InputError(f"{display_path(path)}:{exc.lineno}:{exc.colno}: invalid JSON: {exc.msg}") from exc
     entries: list[Entry] = []
     findings: list[Finding] = []
 
     def visit(value: Any, parts: list[str]) -> None:
         if len(entries) + len(findings) >= max_entries:
-            raise InputError(f"{path}: entry count exceeds limit {max_entries}")
+            raise InputError(f"{display_path(path)}: entry count exceeds limit {max_entries}")
         if isinstance(value, str):
             if not parts:
-                findings.append(Finding("empty_key", "error", "Root JSON string has no key", str(path)))
+                findings.append(Finding("empty_key", "error", "Root JSON string has no key", display_path(path)))
                 return
             key = "/" + "/".join(p.replace("~", "~0").replace("/", "~1") for p in parts)
             entries.append(Entry(key, value, None))
@@ -140,7 +152,7 @@ def _json_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[En
             for index, child in enumerate(value):
                 visit(child, parts + [str(index)])
         else:
-            findings.append(Finding("unsupported_json_value", "note", f"Ignoring non-string JSON leaf at {'/'.join(parts) or '/'}", str(path)))
+            findings.append(Finding("unsupported_json_value", "note", f"Ignoring non-string JSON leaf at {'/'.join(parts) or '/'}", display_path(path)))
 
     visit(root, [])
     return entries, findings
@@ -169,7 +181,7 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
         translations = list(current.get("msgstr_plural", {}).values()) if current.get("msgstr_plural") else [current.get("msgstr", "")]
         value = "\n".join(item for item in translations if item != "")
         if key in seen_keys:
-            findings.append(Finding("duplicate_key", "error", f"Duplicate PO key {key!r}", str(path), start_line, key))
+            findings.append(Finding("duplicate_key", "error", f"Duplicate PO key {key!r}", display_path(path), start_line, key))
         else:
             entries.append(Entry(key, value, start_line))
             seen_keys.add(key)
@@ -192,12 +204,12 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
             try:
                 value = ast.literal_eval(literal)
             except (ValueError, SyntaxError) as exc:
-                findings.append(Finding("malformed_po_string", "error", f"Invalid quoted PO string: {exc}", str(path), line_number))
+                findings.append(Finding("malformed_po_string", "error", f"Invalid quoted PO string: {exc}", display_path(path), line_number))
                 current = {}
                 active = None
                 continue
             if not isinstance(value, str):
-                findings.append(Finding("malformed_po_string", "error", "PO value must be a quoted string", str(path), line_number))
+                findings.append(Finding("malformed_po_string", "error", "PO value must be a quoted string", display_path(path), line_number))
                 continue
             if field.startswith("msgstr["):
                 index = int(field[field.index("[") + 1:-1])
@@ -207,16 +219,16 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
                 current[field] = value
                 active = field
             if len(entries) >= max_entries:
-                raise InputError(f"{path}: entry count exceeds limit {max_entries}")
+                raise InputError(f"{display_path(path)}: entry count exceeds limit {max_entries}")
             continue
         if stripped.startswith('"') and active:
             try:
                 continuation = ast.literal_eval(stripped)
             except (ValueError, SyntaxError) as exc:
-                findings.append(Finding("malformed_po_string", "error", f"Invalid PO continuation: {exc}", str(path), line_number))
+                findings.append(Finding("malformed_po_string", "error", f"Invalid PO continuation: {exc}", display_path(path), line_number))
                 continue
             if not isinstance(continuation, str):
-                findings.append(Finding("malformed_po_string", "error", "PO continuation must be quoted", str(path), line_number))
+                findings.append(Finding("malformed_po_string", "error", "PO continuation must be quoted", display_path(path), line_number))
                 continue
             if active.startswith("msgstr_plural:"):
                 index = int(active.split(":", 1)[1])
@@ -224,7 +236,7 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
             else:
                 current[active] += continuation
             continue
-        findings.append(Finding("malformed_po_entry", "error", "Unrecognized PO syntax", str(path), line_number))
+        findings.append(Finding("malformed_po_entry", "error", "Unrecognized PO syntax", display_path(path), line_number))
     finish()
     return entries, findings
 
@@ -275,19 +287,19 @@ def compare(source: list[Entry], target: list[Entry], source_path: Path, target_
     source_map = {entry.key: entry for entry in source}
     target_map = {entry.key: entry for entry in target}
     for key in sorted(source_map.keys() - target_map.keys()):
-        findings.append(Finding("missing_key", "error", f"Target is missing source key {key!r}", str(target_path), key=key))
+        findings.append(Finding("missing_key", "error", f"Target is missing source key {key!r}", display_path(target_path), key=key))
     for key in sorted(target_map.keys() - source_map.keys()):
-        findings.append(Finding("extra_key", "warning", f"Target contains unknown key {key!r}", str(target_path), target_map[key].line, key))
+        findings.append(Finding("extra_key", "warning", f"Target contains unknown key {key!r}", display_path(target_path), target_map[key].line, key))
     for key in sorted(source_map.keys() & target_map.keys()):
         source_entry, target_entry = source_map[key], target_map[key]
         if not target_entry.text.strip():
-            findings.append(Finding("empty_translation", "warning", f"Translation for {key!r} is empty", str(target_path), target_entry.line, key))
+            findings.append(Finding("empty_translation", "warning", f"Translation for {key!r} is empty", display_path(target_path), target_entry.line, key))
         source_tokens = extract_tokens(source_entry.text)
         target_tokens = extract_tokens(target_entry.text)
         for rule_id, token, count in _counter_delta(source_tokens, target_tokens):
             level = "note" if rule_id == "unsupported_syntax" else "error"
-            findings.append(Finding(rule_id, level, f"{token} occurs {count} time(s) in source/target mismatch for {key!r}", str(target_path), target_entry.line, key,
-                                    {"token": token, "count": count, "source_file": str(source_path)}))
+            findings.append(Finding(rule_id, level, f"{token} occurs {count} time(s) in source/target mismatch for {key!r}", display_path(target_path), target_entry.line, key,
+                                    {"token": token, "count": count, "source_file": display_path(source_path)}))
     return findings
 
 
@@ -303,4 +315,8 @@ def _counter_delta(source: Counter[tuple[str, str]], target: Counter[tuple[str, 
 
 def finding_dict(finding: Finding) -> dict[str, Any]:
     result = asdict(finding)
+    result["file"] = display_path(result["file"])
+    details = result.get("details")
+    if isinstance(details, dict) and isinstance(details.get("source_file"), str):
+        details["source_file"] = display_path(details["source_file"])
     return {key: value for key, value in result.items() if value is not None}

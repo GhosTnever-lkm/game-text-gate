@@ -1,6 +1,8 @@
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 from game_text_gate.cli import main
@@ -28,9 +30,29 @@ class CliTests(unittest.TestCase):
         self.assertEqual(main(args), 1)
         self.assertEqual(main(args + ["--fail-on", "warning"]), 1)
 
-    def test_bad_input_returns_two(self):
+    def test_shareable_reports_omit_absolute_parent_paths(self):
+        self.target.write_text('{"greet":"Bonjour"}', encoding="utf-8")
+        for output_format in ("json", "markdown", "sarif"):
+            with self.subTest(output_format=output_format):
+                report_path = self.root / f"report-{output_format}.txt"
+                code = main(["--source", str(self.source), "--target", str(self.target),
+                             "--report", output_format, "--output", str(report_path)])
+                self.assertEqual(code, 1)
+                rendered = report_path.read_text(encoding="utf-8")
+                self.assertNotIn(str(self.root), rendered)
+                if output_format == "json":
+                    report = json.loads(rendered)
+                    self.assertEqual((report["source"], report["target"]), ("en.json", "fr.json"))
+                    self.assertNotIn(str(self.root), json.dumps(report))
+
+    def test_bad_input_returns_two_without_absolute_parent_path(self):
         self.target.write_text("{broken", encoding="utf-8")
-        self.assertEqual(main(["--source", str(self.source), "--target", str(self.target)]), 2)
+        error = io.StringIO()
+        with redirect_stderr(error):
+            result = main(["--source", str(self.source), "--target", str(self.target)])
+        self.assertEqual(result, 2)
+        self.assertNotIn(str(self.root), error.getvalue())
+        self.assertIn("fr.json", error.getvalue())
 
 
 if __name__ == "__main__":
