@@ -1,10 +1,13 @@
+import contextlib
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from game_text_gate.cli import main
 from game_text_gate.core import Finding, InputError, compare, extract_tokens, load_entries
-from game_text_gate.report import make_report, to_markdown, to_sarif
+from game_text_gate.report import make_report, to_json, to_markdown, to_sarif
 
 
 class CoreTests(unittest.TestCase):
@@ -93,6 +96,42 @@ class CoreTests(unittest.TestCase):
         self.assertIn("key&#124;&#96;next row", rendered)
         self.assertNotIn("evil|`file\nnext.csv", rendered)
         self.assertNotIn("key|`next\nrow", rendered)
+
+    def test_reports_escape_bidi_controls_visually_and_json_roundtrips(self):
+        key = "menu\u202e[ERROR]"
+        report = make_report(
+            [Finding("missing_token", "error", "Placeholder missing", "locales/fr.json", key=key)],
+            "locales/en.json",
+            "locales/fr.json",
+            "0.1.11",
+        )
+        markdown = to_markdown(report)
+        json_text = to_json(report)
+        sarif_text = to_sarif(report)
+
+        for rendered in (markdown, json_text, sarif_text):
+            self.assertNotIn("\u202e", rendered)
+        self.assertIn("&#92;u202e", markdown)
+        self.assertIn(r"\u202e", json_text)
+        self.assertIn(r"\u202e", sarif_text)
+        self.assertEqual(json.loads(json_text)["findings"][0]["key"], key)
+        self.assertEqual(
+            json.loads(sarif_text)["runs"][0]["results"][0]["properties"]["key"],
+            key,
+        )
+
+    def test_cli_input_error_escapes_bidi_and_newline_in_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "missing\n\u202e.json"
+            target = Path(tmp) / "target.json"
+            target.write_text('{"key":"value"}', encoding="utf-8")
+            error = io.StringIO()
+            with contextlib.redirect_stderr(error):
+                result = main(["--source", str(source), "--target", str(target)])
+        text = error.getvalue()
+        self.assertEqual(result, 2)
+        self.assertNotIn("\u202e", text)
+        self.assertIn(r"missing\n\u202e.json", text)
 
 
 if __name__ == "__main__":

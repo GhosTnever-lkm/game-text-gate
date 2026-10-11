@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .core import Finding, InputError, compare, load_entries
-from .report import make_report, to_json, to_markdown, to_sarif
+from .report import escape_control_characters, make_report, to_json, to_markdown, to_sarif
 
 
 def parser() -> argparse.ArgumentParser:
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         target, target_findings = _load_args(args.target, args.format, target_locale, args.target_column, args)
         findings = source_findings + target_findings + compare(source, target, args.source, args.target)
     except InputError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+        print(f"ERROR: {escape_control_characters(str(exc))}", file=sys.stderr)
         return 2
 
     report = make_report(findings, str(args.source), str(args.target), __version__)

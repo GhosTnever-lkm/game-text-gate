@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.12 — 2026-10-11
+
+- Render Unicode control and bidi-format characters visibly in Markdown and JSON/SARIF text so malicious localization keys cannot spoof terminals or logs; parsed JSON values remain unchanged.
+- Escape untrusted filenames in CLI input errors and update the Action example to the runtime-fixed tag.
+
 ## 0.1.11 — 2026-10-11
 
 - Verify the source ZIP checksum before publishing, then install the archive in a clean virtual environment and smoke-test its packaged CLI against the clean sample.

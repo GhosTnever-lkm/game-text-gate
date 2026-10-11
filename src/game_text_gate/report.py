@@ -1,12 +1,53 @@
 from __future__ import annotations
 
 import json
+import unicodedata
 from pathlib import Path
 from typing import Any
 
 from .core import Finding, display_path, finding_dict
 
 SARIF_LEVEL = {"error": "error", "warning": "warning", "note": "note"}
+
+
+def escape_control_characters(value: str, *, whitespace_as_space: bool = False) -> str:
+    """Render control/format characters visibly before reports reach a viewer."""
+    escaped: list[str] = []
+    whitespace = {"\r": r"\r", "\n": r"\n", "\t": r"\t"}
+    for char in value:
+        if char in whitespace:
+            escaped.append(" " if whitespace_as_space else whitespace[char])
+        elif unicodedata.category(char).startswith("C"):
+            codepoint = ord(char)
+            if codepoint <= 0xFF:
+                escaped.append(f"\\x{codepoint:02x}")
+            elif codepoint <= 0xFFFF:
+                escaped.append(f"\\u{codepoint:04x}")
+            else:
+                escaped.append(f"\\U{codepoint:08x}")
+        else:
+            escaped.append(char)
+    return "".join(escaped)
+
+
+def _escape_json_controls(serialized: str) -> str:
+    """Escape formatting controls in JSON text while preserving decoded data."""
+    result: list[str] = []
+    for char in serialized:
+        if char in "\r\n\t":
+            result.append(char)  # JSON formatting whitespace, not source data.
+        elif unicodedata.category(char).startswith("C"):
+            codepoint = ord(char)
+            if codepoint <= 0xFFFF:
+                result.append(f"\\u{codepoint:04x}")
+            else:
+                value = codepoint - 0x10000
+                high = 0xD800 + (value >> 10)
+                low = 0xDC00 + (value & 0x3FF)
+                result.extend((f"\\u{high:04x}", f"\\u{low:04x}"))
+        else:
+            result.append(char)
+    return "".join(result)
 
 
 def make_report(findings: list[Finding], source: str, target: str, version: str) -> dict[str, Any]:
@@ -21,19 +62,17 @@ def make_report(findings: list[Finding], source: str, target: str, version: str)
 
 
 def to_json(report: dict[str, Any]) -> str:
-    return json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+    serialized = json.dumps(report, ensure_ascii=False, indent=2)
+    return _escape_json_controls(serialized) + "\n"
 
 
 def _markdown_cell(value: Any) -> str:
     """Keep untrusted keys and filenames on one safe Markdown table cell."""
     escaped: list[str] = []
-    for char in str(value if value is not None else "—"):
+    visible = escape_control_characters(str(value if value is not None else "—"), whitespace_as_space=True)
+    for char in visible:
         codepoint = ord(char)
-        if char in "\r\n\t":
-            escaped.append(" ")
-        elif codepoint < 0x20 or codepoint == 0x7F:
-            escaped.append(f"&#{codepoint};")
-        elif char == "&":
+        if char == "&":
             escaped.append("&amp;")
         elif char == "<":
             escaped.append("&lt;")
@@ -92,4 +131,5 @@ def to_sarif(report: dict[str, Any]) -> str:
             "results": results,
         }],
     }
-    return json.dumps(sarif, ensure_ascii=False, indent=2) + "\n"
+    serialized = json.dumps(sarif, ensure_ascii=False, indent=2)
+    return _escape_json_controls(serialized) + "\n"
