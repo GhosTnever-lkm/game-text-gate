@@ -98,7 +98,7 @@ class CoreTests(unittest.TestCase):
         self.assertNotIn("key|`next\nrow", rendered)
 
     def test_reports_escape_bidi_controls_visually_and_json_roundtrips(self):
-        key = "menu\u202e[ERROR]"
+        key = "menu\u202e\u2028line\u2029end\u0085[ERROR]"
         report = make_report(
             [Finding("missing_token", "error", "Placeholder missing", "locales/fr.json", key=key)],
             "locales/en.json",
@@ -110,10 +110,14 @@ class CoreTests(unittest.TestCase):
         sarif_text = to_sarif(report)
 
         for rendered in (markdown, json_text, sarif_text):
-            self.assertNotIn("\u202e", rendered)
+            for invisible in ("\u202e", "\u2028", "\u2029", "\u0085"):
+                self.assertNotIn(invisible, rendered)
         self.assertIn("&#92;u202e", markdown)
+        self.assertIn("2028", markdown)
         self.assertIn(r"\u202e", json_text)
+        self.assertIn(r"\u2028", json_text)
         self.assertIn(r"\u202e", sarif_text)
+        self.assertIn(r"\u2028", sarif_text)
         self.assertEqual(json.loads(json_text)["findings"][0]["key"], key)
         self.assertEqual(
             json.loads(sarif_text)["runs"][0]["results"][0]["properties"]["key"],
@@ -122,7 +126,7 @@ class CoreTests(unittest.TestCase):
 
     def test_cli_input_error_escapes_bidi_and_newline_in_filename(self):
         with tempfile.TemporaryDirectory() as tmp:
-            source = Path(tmp) / "missing\n\u202e.json"
+            source = Path(tmp) / "missing\n\u202e\u2028line\u2029end.json"
             target = Path(tmp) / "target.json"
             target.write_text('{"key":"value"}', encoding="utf-8")
             error = io.StringIO()
@@ -130,8 +134,9 @@ class CoreTests(unittest.TestCase):
                 result = main(["--source", str(source), "--target", str(target)])
         text = error.getvalue()
         self.assertEqual(result, 2)
-        self.assertNotIn("\u202e", text)
-        self.assertIn(r"missing\n\u202e.json", text)
+        for invisible in ("\u202e", "\u2028", "\u2029"):
+            self.assertNotIn(invisible, text)
+        self.assertIn(r"missing\n\u202e\u2028line\u2029end.json", text)
 
 
 if __name__ == "__main__":

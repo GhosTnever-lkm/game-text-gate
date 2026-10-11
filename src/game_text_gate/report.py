@@ -17,7 +17,7 @@ def escape_control_characters(value: str, *, whitespace_as_space: bool = False) 
     for char in value:
         if char in whitespace:
             escaped.append(" " if whitespace_as_space else whitespace[char])
-        elif unicodedata.category(char).startswith("C"):
+        elif unicodedata.category(char).startswith("C") or unicodedata.category(char) in {"Zl", "Zp"}:
             codepoint = ord(char)
             if codepoint <= 0xFF:
                 escaped.append(f"\\x{codepoint:02x}")
@@ -36,7 +36,7 @@ def _escape_json_controls(serialized: str) -> str:
     for char in serialized:
         if char in "\r\n\t":
             result.append(char)  # JSON formatting whitespace, not source data.
-        elif unicodedata.category(char).startswith("C"):
+        elif unicodedata.category(char).startswith("C") or unicodedata.category(char) in {"Zl", "Zp"}:
             codepoint = ord(char)
             if codepoint <= 0xFFFF:
                 result.append(f"\\u{codepoint:04x}")

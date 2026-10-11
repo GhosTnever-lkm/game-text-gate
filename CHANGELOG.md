@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13 — 2026-10-11
+
+- Render Unicode LINE SEPARATOR and PARAGRAPH SEPARATOR as visible escapes in human-readable reports and CLI input errors.
+- Escape them in JSON/SARIF serialization without changing parsed values; extend regressions for U+2028/U+2029/C1.
+
 ## 0.1.12 — 2026-10-11
 
 - Render Unicode control and bidi-format characters visibly in Markdown and JSON/SARIF text so malicious localization keys cannot spoof terminals or logs; parsed JSON values remain unchanged.
