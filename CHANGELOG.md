@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.15 - 2026-10-11
+
+- CI now also runs the test suite on Windows (windows-latest), not only Ubuntu.
+
+
 ## 0.1.14 - 2026-10-11
 
 - Complete the standard MIT license text, restoring the full warranty and liability disclaimer.
