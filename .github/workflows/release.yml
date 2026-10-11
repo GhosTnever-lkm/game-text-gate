@@ -22,6 +22,27 @@ jobs:
           git archive --format=zip --prefix=GameText-Gate-${GITHUB_REF_NAME}/ HEAD -o dist/GameText-Gate-${GITHUB_REF_NAME}.zip
           cd dist
           sha256sum GameText-Gate-${GITHUB_REF_NAME}.zip > GameText-Gate-${GITHUB_REF_NAME}.zip.sha256
+          sha256sum --check GameText-Gate-${GITHUB_REF_NAME}.zip.sha256
+      - name: Smoke-test the release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${GITHUB_REF_NAME#v}"
+          work="$RUNNER_TEMP/game-text-gate-release-smoke"
+          mkdir -p "$work/extracted"
+          unzip -q "dist/GameText-Gate-${GITHUB_REF_NAME}.zip" -d "$work/extracted"
+          source_dir="$work/extracted/GameText-Gate-${GITHUB_REF_NAME}"
+          python -m venv "$work/venv"
+          "$work/venv/bin/python" -m pip install --disable-pip-version-check "$source_dir"
+          actual="$("$work/venv/bin/python" -c 'from importlib.metadata import version; print(version("game-text-gate"))')"
+          test "$actual" = "$expected"
+          "$work/venv/bin/game-text-gate" --version
+          "$work/venv/bin/game-text-gate" \
+            --source "$source_dir/samples/en.json" \
+            --target "$source_dir/samples/fr-clean.json" \
+            --source-locale en --target-locale fr \
+            --report json --output "$work/report.json" --fail-on error
+          "$work/venv/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert not report["findings"], report["findings"]' "$work/report.json"
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

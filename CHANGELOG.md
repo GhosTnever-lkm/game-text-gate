@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.11 — 2026-10-11
+
+- Verify the source ZIP checksum before publishing, then install the archive in a clean virtual environment and smoke-test its packaged CLI against the clean sample.
+- No localization-analysis runtime behavior changed.
+
 ## 0.1.10 — 2026-10-11
 
 - Add a tested sample-report preview to the project README.
