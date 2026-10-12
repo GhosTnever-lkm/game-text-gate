@@ -19,7 +19,7 @@ Offline localization QA for game text exports. Compare a source locale with a ta
 | Gettext PO | `msgid`, `msgctxt`, `msgstr`, multiline quoted strings, plural `msgstr[n]` | Plural forms are joined for token checks. Context is combined with `msgid` for key identity. |
 | Nested JSON | String leaves in objects/arrays | Flattened to escaped JSON Pointer keys. Duplicate object keys are rejected. |
 
-Placeholder checks cover simple `{name}` / `{0}`, printf-style tokens, a conservative Unity-style rich-text tag allowlist, and a conservative BBCode tag allowlist. ICU plural/select and typed ICU expressions are explicitly reported as unsupported notes; this tool does not claim full ICU, HTML, BBCode, or engine-runtime validation. Findings are static checks and require human review.
+Placeholder checks cover simple `{name}` / `{0}`, printf-style tokens, a conservative Unity-style rich-text tag allowlist, and a conservative BBCode tag allowlist. In gettext PO files, plural placeholders are checked across each translated form independently; languages can have different numbers of plural forms, and every form is checked for missing placeholders. ICU plural/select and typed ICU expressions are explicitly reported as unsupported notes; this tool does not claim full ICU, HTML, BBCode, or engine-runtime validation. Findings are static checks and require human review.
 
 Inputs are read as UTF-8 (optional BOM), with a default 10 MiB per-file and 100,000-entry limit. Nothing is uploaded. Reports contain workspace-relative paths (or only the basename for files outside the workspace) and localization keys; absolute parent directories and source/translated text are not copied into shareable reports. Human-readable output visibly escapes control, bidi-format, and Unicode line/paragraph separators; JSON/SARIF use Unicode escapes while preserving decoded data.
 
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: GhosTnever-lkm/game-text-gate@v0.1.15
+      - uses: GhosTnever-lkm/game-text-gate@v0.1.16
         with:
           source: Localization/en.csv
           target: Localization/ru.csv

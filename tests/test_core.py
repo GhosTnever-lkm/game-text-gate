@@ -57,6 +57,28 @@ class CoreTests(unittest.TestCase):
         self.assertEqual({e.key: e.text for e in entries}, {"items": "un\nplusieurs", "long": "ligne continuee"})
         self.assertEqual(findings, [])
 
+    def test_po_plural_placeholders_ignore_different_form_counts_but_check_every_form(self):
+        source = self.write(
+            "en.po",
+            'msgid "%d item"\nmsgid_plural "%d items"\nmsgstr[0] "%d item"\nmsgstr[1] "%d items"\n',
+        )
+        target = self.write(
+            "ru.po",
+            'msgid "%d item"\nmsgid_plural "%d items"\nmsgstr[0] "%d предмет"\nmsgstr[1] "%d предмета"\nmsgstr[2] "%d предметов"\n',
+        )
+        source_entries, source_findings = load_entries(source, "po", "en")
+        target_entries, target_findings = load_entries(target, "po", "ru")
+
+        self.assertEqual(source_findings + target_findings + compare(source_entries, target_entries, source, target), [])
+
+        incomplete = self.write(
+            "ru-incomplete.po",
+            'msgid "%d item"\nmsgid_plural "%d items"\nmsgstr[0] "%d предмет"\nmsgstr[1] "предмета"\nmsgstr[2] "%d предметов"\n',
+        )
+        incomplete_entries, findings = load_entries(incomplete, "po", "ru")
+        mismatch = compare(source_entries, incomplete_entries, source, incomplete)
+        self.assertIn("missing_token", [finding.rule_id for finding in findings + mismatch])
+
     def test_po_context_is_part_of_key_identity(self):
         path = self.write("contexts.po", 'msgctxt "button"\nmsgid "Open"\nmsgstr "Открыть"\n\nmsgctxt "door"\nmsgid "Open"\nmsgstr "Открыт"\n')
         entries, findings = load_entries(path, "po", "ru")

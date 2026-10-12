@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.16 - 2026-10-12
+
+- Compare gettext plural placeholders across each translation form instead of summing counts across languages with different plural-form counts.
+- Report a missing placeholder when any declared target plural form omits it; detect extra occurrences in target forms.
+- Document plural-form validation and update the GitHub Action example to v0.1.16.
+
 ## 0.1.15 - 2026-10-11
 
 - CI now also runs the test suite on Windows (windows-latest), not only Ubuntu.

@@ -31,6 +31,7 @@ class Entry:
     key: str
     text: str
     line: int | None
+    token_variants: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -179,11 +180,13 @@ def _po_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[Entr
         context = current.get("msgctxt")
         key = f"{context}\x04{msgid}" if context is not None else msgid
         translations = list(current.get("msgstr_plural", {}).values()) if current.get("msgstr_plural") else [current.get("msgstr", "")]
-        value = "\n".join(item for item in translations if item != "")
+        token_variants = tuple(translations)
+        nonempty_translations = tuple(item for item in translations if item != "")
+        value = "\n".join(nonempty_translations)
         if key in seen_keys:
             findings.append(Finding("duplicate_key", "error", f"Duplicate PO key {key!r}", display_path(path), start_line, key))
         else:
-            entries.append(Entry(key, value, start_line))
+            entries.append(Entry(key, value, start_line, token_variants or ("",)))
             seen_keys.add(key)
         current, active, start_line = {}, None, None
 
@@ -294,9 +297,12 @@ def compare(source: list[Entry], target: list[Entry], source_path: Path, target_
         source_entry, target_entry = source_map[key], target_map[key]
         if not target_entry.text.strip():
             findings.append(Finding("empty_translation", "warning", f"Translation for {key!r} is empty", display_path(target_path), target_entry.line, key))
-        source_tokens = extract_tokens(source_entry.text)
-        target_tokens = extract_tokens(target_entry.text)
-        for rule_id, token, count in _counter_delta(source_tokens, target_tokens):
+        source_variants = source_entry.token_variants or (source_entry.text,)
+        target_variants = target_entry.token_variants or (target_entry.text,)
+        source_tokens = _variant_token_bounds(source_variants, maximum=True)
+        target_min_tokens = _variant_token_bounds(target_variants, maximum=False)
+        target_max_tokens = _variant_token_bounds(target_variants, maximum=True)
+        for rule_id, token, count in _variant_counter_delta(source_tokens, target_min_tokens, target_max_tokens):
             level = "note" if rule_id == "unsupported_syntax" else "error"
             findings.append(Finding(rule_id, level, f"{token} occurs {count} time(s) in source/target mismatch for {key!r}", display_path(target_path), target_entry.line, key,
                                     {"token": token, "count": count, "source_file": display_path(source_path)}))
@@ -307,6 +313,29 @@ def _counter_delta(source: Counter[tuple[str, str]], target: Counter[tuple[str, 
     for kind, value in sorted(source.keys() | target.keys()):
         missing = source[(kind, value)] - target[(kind, value)]
         extra = target[(kind, value)] - source[(kind, value)]
+        if missing > 0:
+            yield ("unsupported_syntax" if kind == "icu-unsupported" else "missing_token", f"{kind}:{value}", missing)
+        if extra > 0:
+            yield ("unsupported_syntax" if kind == "icu-unsupported" else "extra_token", f"{kind}:{value}", extra)
+
+
+def _variant_token_bounds(variants: tuple[str, ...], *, maximum: bool) -> Counter[tuple[str, str]]:
+    """Return token counts present at the maximum or minimum across PO plural forms."""
+    counters = [extract_tokens(text) for text in variants]
+    keys = set().union(*(counter.keys() for counter in counters))
+    bound = max if maximum else min
+    return Counter({key: bound(counter[key] for counter in counters) for key in keys})
+
+
+def _variant_counter_delta(
+    source_max: Counter[tuple[str, str]],
+    target_min: Counter[tuple[str, str]],
+    target_max: Counter[tuple[str, str]],
+):
+    """Require each target plural form to retain source tokens, without comparing form counts."""
+    for kind, value in sorted(source_max.keys() | target_min.keys() | target_max.keys()):
+        missing = source_max[(kind, value)] - target_min[(kind, value)]
+        extra = target_max[(kind, value)] - source_max[(kind, value)]
         if missing > 0:
             yield ("unsupported_syntax" if kind == "icu-unsupported" else "missing_token", f"{kind}:{value}", missing)
         if extra > 0:
