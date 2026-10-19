@@ -134,28 +134,30 @@ def _json_entries(path: Path, max_bytes: int, max_entries: int) -> tuple[list[En
         root = json.loads(text, object_pairs_hook=object_pairs)
     except json.JSONDecodeError as exc:
         raise InputError(f"{display_path(path)}:{exc.lineno}:{exc.colno}: invalid JSON: {exc.msg}") from exc
+    except RecursionError as exc:
+        raise InputError(f"{display_path(path)}: JSON nesting exceeds the parser's supported depth") from exc
     entries: list[Entry] = []
     findings: list[Finding] = []
 
-    def visit(value: Any, parts: list[str]) -> None:
+    pending: list[tuple[Any, list[str]]] = [(root, [])]
+    while pending:
+        value, parts = pending.pop()
         if len(entries) + len(findings) >= max_entries:
             raise InputError(f"{display_path(path)}: entry count exceeds limit {max_entries}")
         if isinstance(value, str):
             if not parts:
                 findings.append(Finding("empty_key", "error", "Root JSON string has no key", display_path(path)))
-                return
+                continue
             key = "/" + "/".join(p.replace("~", "~0").replace("/", "~1") for p in parts)
             entries.append(Entry(key, value, None))
         elif isinstance(value, dict):
-            for key, child in value.items():
-                visit(child, parts + [str(key)])
+            for key, child in reversed(list(value.items())):
+                pending.append((child, parts + [str(key)]))
         elif isinstance(value, list):
-            for index, child in enumerate(value):
-                visit(child, parts + [str(index)])
+            for index in range(len(value) - 1, -1, -1):
+                pending.append((value[index], parts + [str(index)]))
         else:
             findings.append(Finding("unsupported_json_value", "note", f"Ignoring non-string JSON leaf at {'/'.join(parts) or '/'}", display_path(path)))
-
-    visit(root, [])
     return entries, findings
 
 

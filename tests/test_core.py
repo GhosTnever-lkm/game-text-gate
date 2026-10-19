@@ -51,6 +51,20 @@ class CoreTests(unittest.TestCase):
         with self.assertRaisesRegex(InputError, "duplicate JSON object key"):
             load_entries(bad, "json", "en")
 
+    def test_json_flattening_handles_nesting_beyond_python_recursion_limit(self):
+        depth = 1200
+        path = self.write("deep.json", "[" * depth + '"value"' + "]" * depth)
+        entries, findings = load_entries(path, "json", "en")
+        self.assertEqual(findings, [])
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].key, "/0" * depth)
+
+    def test_json_parser_depth_error_is_actionable(self):
+        depth = 10_000
+        path = self.write("too-deep.json", "[" * depth + "null" + "]" * depth)
+        with self.assertRaisesRegex(InputError, "JSON nesting exceeds the parser's supported depth"):
+            load_entries(path, "json", "en")
+
     def test_po_handles_multiline_and_plural_values(self):
         path = self.write("fr.po", 'msgid "items"\nmsgid_plural "items"\nmsgstr[0] "un"\nmsgstr[1] "plusieurs"\n\nmsgid "long"\nmsgstr "ligne "\n"continuee"\n')
         entries, findings = load_entries(path, "po", "fr")
