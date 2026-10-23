@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.17 - 2026-10-23
+
+- Add configurable `max-file-size` and `max-entries` inputs to the GitHub Action, matching the CLI limits.
+- Keep the Action's annotation pass under the same configured limits as the report generation pass.
+- Synchronize the CLI and report version with the package release version, and verify it during release smoke tests.
+
 ## 0.1.16 - 2026-10-12
 
 - Compare gettext plural placeholders across each translation form instead of summing counts across languages with different plural-form counts.
