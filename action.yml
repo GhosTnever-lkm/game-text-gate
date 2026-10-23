@@ -44,6 +44,14 @@ inputs:
     description: Python runtime version
     required: false
     default: '3.12'
+  max-file-size:
+    description: "Maximum bytes per input file (default: 10485760)"
+    required: false
+    default: '10485760'
+  max-entries:
+    description: "Maximum rows or entries per input file (default: 100000)"
+    required: false
+    default: '100000'
 runs:
   using: composite
   steps:
@@ -65,6 +73,8 @@ runs:
         GTT_REPORT: ${{ inputs.report }}
         GTT_REPORT_PATH: ${{ inputs.report-path }}
         GTT_FAIL_ON: ${{ inputs.fail-on }}
+        GTT_MAX_FILE_SIZE: ${{ inputs.max-file-size }}
+        GTT_MAX_ENTRIES: ${{ inputs.max-entries }}
       run: |
         python - <<'PY'
         import os
@@ -76,7 +86,9 @@ runs:
 
         args = ["--source", os.environ["GTT_SOURCE"], "--target", os.environ["GTT_TARGET"],
                 "--source-locale", os.environ["GTT_SOURCE_LOCALE"], "--format", os.environ["GTT_FORMAT"],
-                "--report", os.environ["GTT_REPORT"], "--fail-on", os.environ["GTT_FAIL_ON"]]
+                "--report", os.environ["GTT_REPORT"], "--fail-on", os.environ["GTT_FAIL_ON"],
+                "--max-file-size", os.environ["GTT_MAX_FILE_SIZE"],
+                "--max-entries", os.environ["GTT_MAX_ENTRIES"]]
         if os.environ["GTT_TARGET_LOCALE"]:
             args += ["--target-locale", os.environ["GTT_TARGET_LOCALE"]]
         if os.environ["GTT_SOURCE_COLUMN"]:
@@ -94,8 +106,12 @@ runs:
                 fmt = {".csv": "csv", ".po": "po", ".json": "json"}.get(source.suffix.casefold(), "")
             source_locale = os.environ["GTT_SOURCE_LOCALE"]
             target_locale = os.environ["GTT_TARGET_LOCALE"] or target.stem
-            source_entries, source_findings = load_entries(source, fmt, source_locale, text_column=os.environ["GTT_SOURCE_COLUMN"] or None)
-            target_entries, target_findings = load_entries(target, fmt, target_locale, text_column=os.environ["GTT_TARGET_COLUMN"] or None)
+            max_file_size = int(os.environ["GTT_MAX_FILE_SIZE"])
+            max_entries = int(os.environ["GTT_MAX_ENTRIES"])
+            source_entries, source_findings = load_entries(source, fmt, source_locale, text_column=os.environ["GTT_SOURCE_COLUMN"] or None,
+                                                           max_bytes=max_file_size, max_entries=max_entries)
+            target_entries, target_findings = load_entries(target, fmt, target_locale, text_column=os.environ["GTT_TARGET_COLUMN"] or None,
+                                                           max_bytes=max_file_size, max_entries=max_entries)
             findings = source_findings + target_findings + compare(source_entries, target_entries, source, target)
             for finding in findings:
                 if finding.level not in ("error", "warning"):
