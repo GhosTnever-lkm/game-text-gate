@@ -1,3 +1,3 @@
 """Local-first localization QA for game text exports."""
 
-__version__ = "0.1.14"
+__version__ = "0.1.17"

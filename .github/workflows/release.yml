@@ -36,7 +36,8 @@ jobs:
           "$work/venv/bin/python" -m pip install --disable-pip-version-check "$source_dir"
           actual="$("$work/venv/bin/python" -c 'from importlib.metadata import version; print(version("game-text-gate"))')"
           test "$actual" = "$expected"
-          "$work/venv/bin/game-text-gate" --version
+          cli_version="$("$work/venv/bin/game-text-gate" --version)"
+          test "$cli_version" = "GameText Gate $expected"
           "$work/venv/bin/game-text-gate" \
             --source "$source_dir/samples/en.json" \
             --target "$source_dir/samples/fr-clean.json" \

@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -16,6 +17,14 @@ class CliTests(unittest.TestCase):
         self.source = self.root / "en.json"
         self.target = self.root / "fr.json"
         self.source.write_text('{"greet":"Hello {name}"}', encoding="utf-8")
+
+    def test_package_version_matches_project_metadata(self):
+        from game_text_gate import __version__
+
+        project = Path(__file__).resolve().parents[1] / "pyproject.toml"
+        match = re.search(r'^version = "([^\"]+)"$', project.read_text(encoding="utf-8"), re.MULTILINE)
+        self.assertIsNotNone(match)
+        self.assertEqual(__version__, match.group(1))
 
     def test_clean_pair_returns_zero_and_writes_json(self):
         self.target.write_text('{"greet":"Bonjour {name}"}', encoding="utf-8")
