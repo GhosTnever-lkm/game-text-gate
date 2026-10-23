@@ -68,7 +68,11 @@ jobs:
           report-path: localization-report.md
           fail-on: error
           python-version: '3.12'
+          max-file-size: '10485760' # 10 MiB per input file
+          max-entries: '100000' # rows or entries per input file
 ```
+
+The size and entry limits apply to each source and target file. Raise them for larger localization exports or lower them for stricter CI resource bounds.
 
 For SARIF upload, set job `security-events: write`, ask the action for `report: sarif`, then use GitHub's `upload-sarif` action with the generated file. The action itself does not request write permissions or upload artifacts.
 
